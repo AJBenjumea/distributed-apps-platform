@@ -13,19 +13,40 @@ import sys
 
 from sql30 import db
 
-from axon.apps.base import BaseApp
-from axon.common import consts, utils
+from jasper.apps.base import BaseApp
+from jasper.common import consts
+import jasper.utils.logger.py as logger
 
 log = logging.getLogger(__name__)
 configs = None
 
+#### CONSTANTS ####
+SYSTEM = platform.system()
+LINUX_OS = True if SYSTEM == 'Linux' else False
+MAC_OS = True if SYSTEM == 'Darwin' else False
+WIN_OS = True if SYSTEM == 'Windows' else False
+
+# Logging Constants
+LINUX_LOG_DIR = os.environ.get('LINUX_LOG_DIR', "/var/log/lydian")
+WIN_LOG_DIR = os.environ.get('WIN_LOG_DIR', "C:\\lydian\\log")
+if LINUX_OS or MAC_OS:
+    LOG_DIR = LINUX_LOG_DIR
+elif WIN_OS:
+    LOG_DIR = WIN_LOG_DIR
+LOG_FILE = "lydian.log"
+
+# Axon Service Constants
+AXON_PORT = 5678
+
+# Recorder Constants
+WAVEFRONT = 'wavefront'
+SQL = 'sql'
+ELASTIC_SEARCH = 'elasticsearch'
+ELASTIC_SEARCH_PORT = 9200
 
 # # # # # All Configurable Variables set below # # # # #
 
-LINUX_OS = "Linux" in platform.uname()
-LOG_FILE = os.environ.get('LOG_FILE', consts.LOG_FILE)
-LOG_DIR = os.environ.get('LOG_DIR', consts.LOG_DIR)
-utils.setup_logging(log_dir=LOG_DIR, log_file=LOG_FILE)
+logger.setup_logging(log_dir=LOG_DIR, log_file=LOG_FILE)
 
 
 # Traffic Server Configs
