@@ -14,7 +14,7 @@ import sys
 from sql30 import db
 
 from jasper.apps.base import BaseApp
-import jasper.utils.logger as logger
+
 
 log = logging.getLogger(__name__)
 configs = None
@@ -45,8 +45,6 @@ ELASTIC_SEARCH = 'elasticsearch'
 ELASTIC_SEARCH_PORT = 9200
 
 # # # # # All Configurable Variables set below # # # # #
-
-logger.setup_logging(log_dir=LOG_DIR, log_file=LOG_FILE)
 
 
 # Traffic Server Configs
