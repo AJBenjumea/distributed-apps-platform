@@ -14,8 +14,7 @@ import sys
 from sql30 import db
 
 from jasper.apps.base import BaseApp
-from jasper.common import consts
-import jasper.utils.logger.py as logger
+import jasper.utils.logger as logger
 
 log = logging.getLogger(__name__)
 configs = None
@@ -37,6 +36,7 @@ LOG_FILE = "lydian.log"
 
 # Axon Service Constants
 AXON_PORT = 5678
+LYDIAN_PORT = 5649
 
 # Recorder Constants
 WAVEFRONT = 'wavefront'
@@ -82,7 +82,7 @@ RECORD_UPDATER_THREAD_POOL_SIZE = 50
 
 ELASTIC_SEARCH_SERVER_ADDRESS = os.environ.get('ELASTIC_SEARCH_SERVER_ADDRESS', None)
 ELASTIC_SEARCH_SERVER_PORT = os.environ.get(
-    'ELASTIC_SEARCH_SERVER_PORT', consts.ELASTIC_SEARCH_PORT)
+    'ELASTIC_SEARCH_SERVER_PORT', ELASTIC_SEARCH_PORT)
 
 # # # # # End of Configurable Variables  # # # # #
 
