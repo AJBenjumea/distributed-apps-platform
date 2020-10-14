@@ -30,8 +30,8 @@ def setup_logging(log_dir=None, log_file=None):
         '%(asctime)s::%(levelname)s::%(threadName)s::'
         '%(module)s[%(lineno)04s]::%(message)s')
     root_logger = logging.getLogger()
-    if root_logger.handlers:
-        return
+    # if root_logger.handlers:
+    #    return
     root_logger.setLevel(logging.INFO)
     file_handler = logging.FileHandler(log_file_name)
     file_handler.setFormatter(log_formatter)
