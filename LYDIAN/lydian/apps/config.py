@@ -14,94 +14,12 @@ from collections import defaultdict
 
 from sql30 import db
 
-from lydian.apps.base import BaseApp
+import lydian.apps.base as base
+import lydian.common.consts as consts 
 
 
 log = logging.getLogger(__name__)
 configs = None
-
-# CONSTANTS
-SYSTEM = platform.system()
-LINUX_OS = True if SYSTEM == 'Linux' else False
-MAC_OS = True if SYSTEM == 'Darwin' else False
-WIN_OS = True if SYSTEM == 'Windows' else False
-
-# Logging Constants
-LINUX_LOG_DIR = os.environ.get('LINUX_LOG_DIR', "/var/log/lydian")
-WIN_LOG_DIR = os.environ.get('WIN_LOG_DIR', "C:\\lydian\\log")
-if LINUX_OS or MAC_OS:
-    LOG_DIR = LINUX_LOG_DIR
-elif WIN_OS:
-    LOG_DIR = WIN_LOG_DIR
-LOG_FILE = "lydian.log"
-
-# Lydian Service Constants
-LYDIAN_PORT = 5649
-
-# Recorder Constants
-WAVEFRONT = 'wavefront'
-SQL = 'sql'
-ELASTIC_SEARCH = 'elasticsearch'
-ELASTIC_SEARCH_PORT = 9200
-
-# # # # # All Configurable Variables set below # # # # #
-
-
-# Traffic Server Configs
-REQUEST_QUEUE_SIZE = 100
-PACKET_SIZE = 1024
-ALLOW_REUSE_ADDRESS = True
-
-
-# Env Configs
-TEST_ID = os.environ.get('TEST_ID', '1234')
-TESTBED_NAME = os.environ.get('TESTBED_NAME', 'LYDIAN_DFLT_TB')
-LYDIAN_PORT = int(os.environ.get('LYDIAN_PORT', LYDIAN_PORT))
-LYDIAN_CONFIG = os.environ.get('LYDIAN_CONFIG', '/etc/lydian/lydian.conf')
-
-# Wavefront recorder configs
-WAVEFRONT_TRAFFIC_RECORDING = os.environ.get('WAVEFRONT_TRAFFIC_RECORDING',
-                                             True)
-WAVEFRONT_RESOURCE_RECORDING = os.environ.get('WAVEFRONT_RESOURCE_RECORDING',
-                                              True)
-WAVEFRONT_PROXY_ADDRESS = os.environ.get('WAVEFRONT_PROXY_ADDRESS', None)
-WAVEFRONT_PROXY_METRICS_PORT = os.environ.get('WAVEFRONT_PROXY_METRICS_PORT', 2878)
-WAVEFRONT_PROXY_DISTRIBUTION_PORT = os.environ.get('WAVEFRONT_PROXY_DISTRIBUTION_PORT', 2878)
-WAVEFRONT_PROXY_TRACING_PORT = os.environ.get('WAVEFRONT_PROXY_TRACING_PORT', 30000)
-WAVEFRONT_PROXY_EVENT_PORT = os.environ.get('WAVEFRONT_PROXY_EVENT_PORT', 2878)
-
-WAVEFRONT_SERVER_ADDRESS = os.environ.get('WAVEFRONT_SERVER_ADDRESS',
-                                          'https://vmware.wavefront.com')
-WAVEFRONT_SERVER_API_TOKEN = os.environ.get('WAVEFRONT_SERVER_API_TOKEN', '')
-
-WAVEFRONT_SOURCE_TAG = os.environ.get('WAVEFRONT_SOURCE', socket.gethostname())
-WAVEFRONT_REPORT_PERC = float(os.environ.get('WAVEFRONT_REPORT_PERC', 1.0))
-
-
-
-# SQLITE recording configs
-SQLITE_TRAFFIC_RECORDING = os.environ.get('SQLITE_TRAFFIC_RECORDING', True)
-SQLITE_RESOURCE_RECORDING = os.environ.get('SQLITE_RESOURCE_RECORDING', True)
-# Namespace Configs
-NAMESPACE_MODE = os.environ.get("NAMESPACE_MODE", False)
-NAMESPACE_MODE = True if NAMESPACE_MODE in ['True', True] else False
-NAMESPACE_INTERFACE_NAME_PREFIXES = ["veth", "eth"]
-
-
-# Recorder Configs
-RECORDER = os.environ.get('RECORDER', None)
-RECORD_UPDATER_THREAD_POOL_SIZE = int(os.environ.get('RECORD_UPDATER_THREAD_POOL_SIZE', 2))
-RESOURCE_RECORD_REPORT_FREQ = int(os.environ.get('RESOURCE_RECORD_REPORT_FREQ', 4))
-TRAFFIC_RECORD_REPORT_FREQ = int(os.environ.get('TRAFFIC_RECORD_REPORT_FREQ', 4))
-RECORD_COUNT_UPDATER_SLEEP_INTERVAL = int(os.environ.get('RECORD_COUNT_UPDATER_SLEEP_INTERVAL', 30))
-RECORD_UPDATER_THREAD_POOL_SIZE = int(os.environ.get('RECORD_UPDATER_THREAD_POOL_SIZE', 50))
-
-ELASTIC_SEARCH_SERVER_ADDRESS = os.environ.get('ELASTIC_SEARCH_SERVER_ADDRESS',
-                                               None)
-ELASTIC_SEARCH_SERVER_PORT = os.environ.get(
-    'ELASTIC_SEARCH_SERVER_PORT', ELASTIC_SEARCH_PORT)
-
-# # # # # End of Configurable Variables  # # # # #
 
 
 class ConfigDB(db.Model):
@@ -124,7 +42,7 @@ class ConfigDB(db.Model):
     VALIDATE_BEFORE_WRITE = True
 
 
-class Config(ConfigDB, BaseApp):
+class Config(ConfigDB, base.BaseApp):
     BOOLS = ('TRUE', 'FALSE')
     NAME = "CONFIG"
 
@@ -160,7 +78,8 @@ class Config(ConfigDB, BaseApp):
         configs are supposed to overwrite.
         """
         try:
-            with open(LYDIAN_CONFIG, 'r') as fh:
+            cfg_file = self.get_param('LYDIAN_CONFIG')
+            with open(cfg_file, 'r') as fh:
                 for line in fh:
                     line = line.strip()
                     if line.startswith('#'):
@@ -171,6 +90,8 @@ class Config(ConfigDB, BaseApp):
                             kindex = line.index('=')
                             param = line[:kindex].strip()
                             val = line[kindex+1:].strip()
+                            val = val.strip('"')
+                            val = val.strip("'")
                             if val.upper() in self.BOOLS:
                                 val = True if val.upper() == "TRUE" else False
                             self._params[param] = val
@@ -180,10 +101,10 @@ class Config(ConfigDB, BaseApp):
             pass
 
     def _set_defaults(self):
-        module_name = sys.modules[__name__]
-        VARS = [var for var in dir(module_name) if var.isupper()]
-        for var in VARS:
-            param, val = var, getattr(module_name, var)
+        """
+        Initialized params with default constants.
+        """
+        for param, val in consts.get_constants().items():
             if str(val).upper() in self.BOOLS:
                 val = True if str(val).upper() == "TRUE" else False
             self._params[param] = val
@@ -277,6 +198,18 @@ class Config(ConfigDB, BaseApp):
     exposed_get_param = get_param
     exposed_set_param = set_param
 
+    def write_config_file(self, file_name, overwrite=True):
+        mode = 'w+' if overwrite  else 'w'
+        marker = '#' * 5
+        with open(file_name, mode) as fp:
+            fp.write("### LYDIAN Service Config file ###")
+            for category in consts.get_categories():
+                fp.write("\n\n")
+                fp.write("%s %s constants %s" % (marker,
+                    category._NAME, marker))
+                for key, val in consts.get_constants([category]).items():
+                    fp.write('\n%s = %s' % (key, self.get_param(key)))
+
 
 def get_configs():
     global configs
@@ -292,3 +225,11 @@ def get_param(param):
 
 def set_param(param, val):
     return get_configs().set_param(param, val)
+
+
+def update_config():
+    """ Update Config file at local installation """
+    data_dir = os.path.dirname(os.path.realpath(__file__))
+    data_dir = os.path.join(data_dir, '../data')
+    cfg_file = os.path.join(data_dir, 'lydian.conf')
+    get_configs().write_config_file(file_name=cfg_file)
