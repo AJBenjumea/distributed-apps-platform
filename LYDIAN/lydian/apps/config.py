@@ -94,6 +94,12 @@ class Config(ConfigDB, base.BaseApp):
                             val = val.strip("'")
                             if val.upper() in self.BOOLS:
                                 val = True if val.upper() == "TRUE" else False
+                            else:
+                                try:
+                                    _ = float(val)
+                                    val = int(_) if round(_) == _ else _
+                                except ValueError:
+                                    pass
                             self._params[param] = val
                         except ValueError:
                             pass
@@ -209,6 +215,7 @@ class Config(ConfigDB, base.BaseApp):
                     category._NAME, marker))
                 for key, val in consts.get_constants([category]).items():
                     fp.write('\n%s = %s' % (key, self.get_param(key)))
+            fp.write("\n\n### LYDIAN Service Config (END) ###\n")
 
 
 def get_configs():
