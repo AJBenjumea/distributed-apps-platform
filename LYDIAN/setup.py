@@ -19,12 +19,12 @@ deps = [x for x in deps if x and not x.startswith('#')]
 setuptools.setup(
     name="lydian",
     version=version['__version__'],
-    author="Vipin Sharma, Pradeep Singh, Spiro Kourtessis, Gavin Chang",
+    author="Vipin Sharma, Gavin Chang",
     author_email="sharmavipin@vmware.com",
     description="Tool for Traffic Generation, Management and Monitoring",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/gitvipin/validation-app-engine",
+    url="https://github.com/vmware/distributed-apps-platform",
     install_requires=deps,
     packages=setuptools.find_packages(),
     classifiers=[

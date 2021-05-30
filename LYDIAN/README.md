@@ -112,10 +112,9 @@ result_dict = json.loads(result)
 
 Repository & License
 ------------
-LYDIAN is a fork from VMWARE's project https://github.com/vmware/validation-app-engine . It has its own independent workflow and internal architecture so nothing should be assumed from the flow and calls perspective. However, corresponding licenses apply to the usage of this tool. Please check them in LICENSE FILE.
+LYDIAN is an Open Source Software (OSS) hosted at https://github.com/vmware/distributed-apps-platform. Check LICENSE.txt for applicable licenses.
 
-https://github.com/gitvipin/validation-app-engine
-
+https://github.com/vmware/distributed-apps-platform
 
 Requirements
 ------------
