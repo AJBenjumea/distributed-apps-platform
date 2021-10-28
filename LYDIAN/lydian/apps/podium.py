@@ -9,10 +9,7 @@ import itertools
 import logging
 import pickle
 import queue
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from queue import Queue
-import threading
 import time
 import uuid
 
@@ -28,7 +25,6 @@ from lydian.utils.prep import prep_node, cleanup_node
 from lydian.utils.parallel import ThreadPool
 
 import lydian.utils.common as common_util
-import lydian.utils.pack as pack
 import lydian.utils.install as install
 
 log = logging.getLogger(__name__)
@@ -85,21 +81,26 @@ class Podium(BaseApp):
         """
         Updates egg file to be used at endpoints.
         """
+        valid_egg_types = ['LOCAL', 'REUSE']
         egg_type = config.get_param('LYDIAN_EGG_TYPE')
         egg_type = egg_type.upper()
-        assert egg_type in ['PRISTINE', 'LOCAL', 'REUSE']
+        vals = ','.join(valid_egg_types)
+        err_msg = "Invalid Egg Type. Valid values are : {%s}" % vals
+        assert egg_type in valid_egg_types, err_msg
 
-        if egg_type == 'PRISTINE':
-            pack.generate_egg()
-        elif egg_type == 'LOCAL':
-            common_util.remove_egg()
-            install.install_egg()
-        elif egg_type == 'REUSE':
-            install.install_egg()   # generate egg only if not already present.
+        if egg_type == 'LOCAL':
+            common_util.remove_egg()    # Generate fresh egg.
+
+        # Generate egg from local installtion if egg not already present.
+        install.install_egg()
 
     @property
     def endpoints(self):
         return self._ep_hosts.keys()
+
+    @property
+    def ep_hosts(self):
+        return self._ep_hosts
 
     @property
     def rules(self):
@@ -129,7 +130,8 @@ class Podium(BaseApp):
         if not self.monitor:
             self.monitor = ResourceMonitor(self.resource_records)
         if not self.db_pool:
-            self.db_pool = RecordManager(self.traffic_records, self.resource_records)
+            self.db_pool = RecordManager(self.traffic_records,
+                                         self.resource_records)
         if self.monitor.stopped():
             self.monitor.start()
         if self.db_pool.stopped():
@@ -152,6 +154,17 @@ class Podium(BaseApp):
                 return True
 
         return False
+
+    def update_endpoints(self, iface_hosts):
+        """
+        Updates internal Interface Host map with the one provided.
+
+        Parameters
+        ----------
+        iface_hosts: dict
+            Interface- Host that will be added to ep_hosts map.
+        """
+        self._ep_hosts.update(iface_hosts)
 
     def remove_endpoints(self, hostip):
         """
@@ -195,7 +208,7 @@ class Podium(BaseApp):
         except Exception as err:
             log.error("Error in adding endpoint %s - %r", hostip, err)
 
-    def add_host(self, hostip, username=None, password=None):
+    def add_host(self, hostip, username=None, password=None, fetch_iface=True):
         """
         Prepare node and return True on success else False.
         """
@@ -205,14 +218,16 @@ class Podium(BaseApp):
             prep_node(hostip, username, password)
             if not self.wait_on_host(hostip):
                 log.error("Could not start service on %s", hostip)
-            self.add_endpoints(hostip, username, password)
+            if fetch_iface:
+                self.add_endpoints(hostip, username, password)
             self.nodes.add(hostip)
             return True
         except Exception as err:
             log.error("Error in preparing host %s - %r", hostip, err)
             return False
 
-    def add_hosts(self, hostips, username=None, password=None):
+    def add_hosts(self, hostips, username=None, password=None,
+                  fetch_iface=True):
         """
         Prepare Hosts with Lydian service and fetches interface information.
         Returns a dictionary of <key:val> as <hostip:True/False>. True/False
@@ -225,18 +240,21 @@ class Podium(BaseApp):
             Username for preparation.
         password: str
             Password for preparation.
+        fetch_iface: bool
+            Fetch Interface information if set to True.
         """
         if isinstance(hostips, str):
             hostips = hostips.split(',')
-        args = [(host, (host, username, password), {}) for host in hostips]
+        args = [(host, (host, username, password, fetch_iface), {})
+                for host in hostips]
         return ThreadPool(self.add_host, args)
 
     def cleanup_hosts(self, hostips, username=None, password=None,
                       remove_db=True):
         """
         Uninstall Lydian service and optionally remove corresponding dbs on
-        remote hosts. Returns a dictionary of <key:val> as <hostip:True/False>. True/False
-        signify success/failure of operation.
+        remote hosts. Returns a dictionary of <key:val> as <hostip:True/False>.
+        True/False signify success/failure of operation.
 
         Parameters:
         ----------
@@ -249,21 +267,24 @@ class Podium(BaseApp):
         """
         if isinstance(hostips, str):
             hostips = hostips.split(',')
-        args = [(host, (host, username, password), {'remove_db': remove_db}) for host in hostips]
+        args = [(host, (host, username, password), {'remove_db': remove_db})
+                for host in hostips]
         results = ThreadPool(cleanup_node, args)
 
-        # Remove all IPs cached in self._ep_hosts for hosts that have successfully cleaned up
+        # Remove all IPs cached in self._ep_hosts for hosts that have
+        # successfully cleaned up
         for host_ip, result in results.items():
             if result:
                 self.remove_endpoints(host_ip)
-                self.nodes.remove(host_ip)
+                if host_ip in self.nodes:
+                    self.nodes.remove(host_ip)
         return results
 
     def get_ep_host(self, epip):
         return self._ep_hosts.get(epip, None)
 
-    def create_traffic_intent(self, src_ip, dst_ip, dst_port, protocol, reqid=None,
-                            connected=True, **kwargs):
+    def create_traffic_intent(self, src_ip, dst_ip, dst_port, protocol,
+                              reqid=None, connected=True, **kwargs):
 
         intent = {
             'reqid': reqid or '%s' % uuid.uuid4(),
@@ -304,8 +325,10 @@ class Podium(BaseApp):
         host_pairs = list(itertools.permutations(hosts, 2))
         intents = []
         for src, dst in host_pairs:
-            intents.append(self.create_traffic_intent(src, dst, dst_port, protocol,
-                                                      connected=connected, reqid=reqid))
+            intents.append(self.create_traffic_intent(src, dst, dst_port,
+                                                      protocol,
+                                                      connected=connected,
+                                                      reqid=reqid))
         self.register_traffic(intents)
         if duration > 0:
             time.sleep(duration)
@@ -363,11 +386,10 @@ class Podium(BaseApp):
         # Start Server before the client.
         for host_rules in host_rules_map:
             collection = [(host, (host, rules), {})
-                            for host, rules in host_rules.items()]
+                          for host, rules in host_rules.items()]
             ThreadPool(_register_traffic_rules, collection)
 
-        # Persist rules to local db
-        self.rules_app.add_rules(_trules)
+        self.rules_app.add_rules(_trules)  # Persist rules to local db
 
     def _traffic_op(self, reqid, op_type):
 
@@ -384,9 +406,6 @@ class Podium(BaseApp):
                 client.controller.unregister_traffic(rules)
                 client.results.delete_record(reqid)
 
-            # Delete rules from local runner rules db
-            self.rules_app.delete_rules(rules)
-
         trules = self.get_rules_by_reqid(reqid)
 
         host_rules = collections.defaultdict(list)
@@ -396,26 +415,30 @@ class Podium(BaseApp):
             hostip = self.get_ep_host(src_ip)
             host_rules[hostip].append(ruleid)
 
-        args = [(host, (host, rules), {}) for host, rules in host_rules.items()]
+        args = [(host, (host, rules), {})
+                for host, rules in host_rules.items()]
         if op_type == 'start':
-            ThreadPool(_start_traffic, args)
+            return ThreadPool(_start_traffic, args)
         elif op_type == 'stop':
-            ThreadPool(_stop_traffic, args)
+            return ThreadPool(_stop_traffic, args)
         elif op_type == 'unregister':
-            ThreadPool(_unregister_traffic, args)
+            return ThreadPool(_unregister_traffic, args)
 
     def start_traffic(self, reqid):
-        self._traffic_op(reqid, op_type='start')
+        return self._traffic_op(reqid, op_type='start')
 
-    def stop_traffic(self, reqid):
-        self._traffic_op(reqid, op_type='stop')
+    def stop_traffic(self, reqid, config=False):
+        return self._traffic_op(reqid, op_type='stop')
 
     def unregister_traffic(self, reqid):
         """ Stop traffic, delete rules and result records"""
-        self._traffic_op(reqid, op_type='unregister')
+        results = self._traffic_op(reqid, op_type='unregister')
+        self.rules_app.delete(reqid=reqid)
+        return results
 
     def get_rules_by_reqid(self, reqid):
-        trules = [trule for rule_id, trule in self.rules.items() if getattr(trule, 'reqid') == reqid]
+        trules = [trule for rule_id, trule in self.rules.items()
+                  if getattr(trule, 'reqid') == reqid]
         return trules
 
     def get_host_result(self, host_ip, reqid, duration=None, **kwargs):
@@ -445,8 +468,10 @@ class Podium(BaseApp):
 
     def get_results(self, reqid, duration=None, **kwargs):
         trules = self.get_rules_by_reqid(reqid)
-        hostips = set([self.get_ep_host(rule.src) for rule in trules if rule.src])
-        results = self._get_results(hostips, reqid, duration=duration, **kwargs)
+        hostips = set([self.get_ep_host(rule.src)
+                      for rule in trules if rule.src])
+        results = self._get_results(hostips, reqid, duration=duration,
+                                    **kwargs)
         return results
 
     def get_traffic_stats(self, reqid, duration=None, **kwargs):
@@ -487,15 +512,17 @@ class Podium(BaseApp):
         with LydianClient(host_ip) as client:
             client.configs.set_param(param, val)
 
-    def get_host_latency(self, host_ip, reqid, method, duration=None, **kwargs):
-
+    def get_host_latency(self, host_ip, reqid, method, duration=None,
+                         **kwargs):
         result = 0
         with LydianClient(host_ip) as client:
             current_time = time.time()
             if duration is not None:
                 # Creating a tuple of range for timestamp field
                 kwargs['timestamp'] = (str(current_time - duration), str(current_time))
-            result = client.results.get_latency_stat(reqid=reqid, method=method, **kwargs)
+            result = client.results.get_latency_stat(reqid=reqid,
+                                                     method=method,
+                                                     **kwargs)
         return result
 
     def _get_latencies(self, trules, reqid, method, duration=None, **kwargs):
@@ -504,7 +531,8 @@ class Podium(BaseApp):
         for trule in trules:
             src_ip = getattr(trule, 'src')
             hosts.add(self.get_ep_host(src_ip))
-        args = [(host, (host, reqid, method, duration), kwargs) for host in hosts]
+        args = [(host, (host, reqid, method, duration), kwargs)
+                for host in hosts]
 
         results = ThreadPool(self.get_host_latency, args)
         latencies = [latency for latency in results.values()]
@@ -512,10 +540,11 @@ class Podium(BaseApp):
 
     def get_latency(self, reqid, method, duration=None, **kwargs):
         trules = self.get_rules_by_reqid(reqid)
-        latencies = self._get_latencies(trules, reqid, method, duration=duration, **kwargs)
+        latencies = self._get_latencies(trules, reqid, method,
+                                        duration=duration, **kwargs)
         result = 0
         latencies = [latency for latency in latencies if latency is not None]
-        if not len(latencies):
+        if latencies:
             return result
 
         if method == 'avg':
@@ -530,13 +559,16 @@ class Podium(BaseApp):
         return result
 
     def get_avg_latency(self, reqid, duration=None, **kwargs):
-        return self.get_latency(reqid, method='avg', duration=duration, **kwargs)
+        return self.get_latency(reqid, method='avg', duration=duration,
+                                **kwargs)
 
     def get_min_latency(self, reqid, duration=None, **kwargs):
-        return self.get_latency(reqid, method='min', duration=duration, **kwargs)
+        return self.get_latency(reqid, method='min', duration=duration,
+                                **kwargs)
 
     def get_max_latency(self, reqid, duration=None, **kwargs):
-        return self.get_latency(reqid, method='max', duration=duration, **kwargs)
+        return self.get_latency(reqid, method='max', duration=duration,
+                                **kwargs)
 
     def start_api_server(self):
         self.setup = SetupInfo()
@@ -551,7 +583,7 @@ class Podium(BaseApp):
                 client.controller.discover_interfaces()
                 self._add_endpoints(client, hostip)
                 return True
-            except Exception as err:
+            except Exception as _:
                 return False
 
     def discover_interfaces(self, hostips):
@@ -615,16 +647,19 @@ def run_iperf(src, dst, duration=10, udp=False, bandwidth=None,
         with LydianClient(src_host) as client:
             port, job_id = None, None
             try:
-                port = server.iperf.start_iperf_server(port=dst_port, args=server_args, iperf_bin=iperf_bin)
+                port = server.iperf.start_iperf_server(port=dst_port,
+                                                       args=server_args,
+                                                       iperf_bin=iperf_bin)
                 log.info('iperf server: %s is running on port %s', dst, port)
                 job_id = client.iperf.start_iperf_client(dst, port,
-                                                         duration=duration, udp=udp,
+                                                         duration=duration,
+                                                         udp=udp,
                                                          bandwidth=bandwidth,
                                                          args=client_args,
                                                          iperf_bin=iperf_bin)
                 job_info = client.iperf.get_client_job_info(job_id)
-                log.info('cmd: %s on iperf client running with job id: %d', job_info['cmd'],
-                         job_id)
+                log.info('cmd: %s on iperf client running with job id: %d',
+                         job_info['cmd'], job_id)
                 time.sleep(duration)
                 while job_info['state'] == 'running':
                     time.sleep(1)
@@ -642,7 +677,8 @@ def run_iperf(src, dst, duration=10, udp=False, bandwidth=None,
 run_iperf3 = run_iperf
 
 
-def start_pcap(host, pcap_file_name, interface, pcap_args='', func_ip=None, tool_path=None):
+def start_pcap(host, pcap_file_name, interface, pcap_args='',
+               func_ip=None, tool_path=None):
     """
     Starts packet capture on a requested host.
     """
@@ -685,6 +721,7 @@ def stop_service(hosts, remove_db=True):
     """
     username = config.get_param('ENDPOINT_USERNAME')
     password = config.get_param('ENDPOINT_PASSWORD')
-    args = [(host, (host, username, password, remove_db), {}) for host in hosts]
+    args = [(host, (host, username, password, remove_db), {})
+            for host in hosts]
 
     ThreadPool(cleanup_node, args)

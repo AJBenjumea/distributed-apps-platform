@@ -20,19 +20,24 @@ ESX = 'ESX'
 UBUNTU = 'UBUNTU'
 WINDOWS = 'WINDOWS'
 
+
+def identify_host(result):
+    if 'VMkernel' in result:
+        return ESX
+    elif 'Ubuntu' in result:
+        # TODO : CentoS, RHEL, SUSE
+        return UBUNTU
+    elif 'kali' in result:
+        return UBUNTU
+    elif 'windows' in result:
+        return WINDOWS
+    else:
+        return None
+
 def get_host_type(hostip, username, password):
     with Host(host=hostip, user=username, passwd=password) as host:
-        result = host.req_call('uname -a')
-
-        if 'VMkernel' in result:
-            return ESX
-        elif 'Ubuntu' in result:
-            # TODO : CentoS, RHEL, SUSE
-            return UBUNTU
-        elif 'kali' in result:
-            return UBUNTU
-        elif 'windows' in result:
-            return WINDOWS
+        return identify_host(host.req_call('uname -a')) or \
+            identify_host(host.req_call('cat /etc/os-release'))
 
 
 class NodePrep(object):
@@ -92,7 +97,8 @@ class NodePrep(object):
         try:
             host.req_call(cmnd)
         except ValueError as err:
-            log.warn("cmnd: %s, error: %s", cmnd, err)
+            # log.warn("cmnd: %s, error: %s", cmnd, err)    # Ignore error.
+            pass
 
     def sync_ntp_server(self, host):
         ntp_server = get_param('LYDIAN_NTP_SERVER')
@@ -350,7 +356,7 @@ class ESXNodePrep(NodePrep):
             self.run_ignore_error(host, 'rm lydian.egg')
             if remove_db:
                 self.cleanup_db(host)
-        return result
+        return True
 
     def get_running_processes(self, grep_args=None):
         """
