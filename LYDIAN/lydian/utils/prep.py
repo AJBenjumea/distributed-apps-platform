@@ -333,13 +333,16 @@ class ESXNodePrep(NodePrep):
                           '/lydian/lydian.sh')
             host.req_call('chmod 555 %s' % '/lydian/lydian.sh')
 
-            self.config_firewall(host)
+            try:
+                self.config_firewall(host)
+            except Exception as err:
+                log.debug("Could not configure firewall. Error: %s", err)
 
             # Start Lydian Service.
             try:
                 host.req_call(self.START_SERVICE, timeout=4)
             except Exception as err:
-                log.error("Error in starting service at %s : %r", self.hostip, err)
+                log.debug("Error in starting service at %s : %r", self.hostip, err)
                 return False
 
         return True
