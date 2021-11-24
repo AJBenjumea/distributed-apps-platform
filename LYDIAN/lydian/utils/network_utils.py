@@ -243,7 +243,10 @@ class InterfaceManager(object):
         if interface not in self._interface_map:
             return ips
         for sub_interface in self._interface_map.get(interface):
-            ips.append(sub_interface.address)
+            if "%" in sub_interface.address:
+                ips.append(sub_interface.address.split("%")[0])
+            else:
+                ips.append(sub_interface.address)
         return ips
 
     def get_all_ips(self):

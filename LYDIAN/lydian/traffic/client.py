@@ -172,8 +172,8 @@ class TCPClient(Client):
                 error = '%s' % err
                 if self.verbose:
                     msg = ("Ping to %s:%s FAIL. Payload / data - %s/%s ."
-                           " ERROR - %r") % (
-                           self.server, self.port, payload, data, err)
+                           " ERROR - %s") % (
+                           self.server, self.port, payload, data, error)
                     log.info(msg)
                     if attempts:
                         count = self.attempts - attempts + 1
@@ -224,8 +224,8 @@ class UDPClient(Client):
                 error = '%s' % error
                 if self.verbose:
                     msg = ("Ping to %s:%s FAIL. Payload / data - %s/%s ."
-                           " ERROR - %r") % (
-                           self.server, self.port, payload, data, err)
+                           " ERROR - %s") % (
+                           self.server, self.port, payload, data, error)
                     log.info(msg)
                     if attempts:
                         count = self.attempts - attempts + 1
@@ -233,7 +233,7 @@ class UDPClient(Client):
             finally:
                 self.socket_close()
 
-        return data, latency, err
+        return data, latency, error
 
     def ping(self, payload):
         latency = 0
