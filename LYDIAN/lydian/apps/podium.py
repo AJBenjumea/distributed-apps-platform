@@ -725,3 +725,13 @@ def stop_service(hosts, remove_db=True):
             for host in hosts]
 
     ThreadPool(cleanup_node, args)
+
+
+def run_vmkping(src, dst_ip, src_vmk, netstack=None, duration=None,
+                func_ip=None, args=""):
+    """
+    Run VMKping on ESX.
+    """
+    with LydianClient(_get_host_ip(src, func_ip)) as client:
+        return client.vmkping.run_vmkping(dst_ip, src_vmk, netstack, duration, args)
+

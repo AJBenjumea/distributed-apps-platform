@@ -156,6 +156,12 @@ class TCPDumpManager(Manager):
         return self._client.tcpdump.is_running(dst_file)
 
 
+class VMKPingManager(Manager):
+
+    def run_vmkping(self, dst_ip, src_vmk, netstack="vxlan", duration=10, args=''):
+        return self._client.vmkping.run_vmkping(dst_ip, src_vmk, netstack, duration, args)
+
+
 class IperfManager(Manager):
 
     def start_iperf_server(self, port=None, args='', iperf_bin='iperf3'):
@@ -406,6 +412,7 @@ class LydianClient(object):
         self.pcap = TCPDumpManager(self.rpc_client.root)
         # IPerf Traffic
         self.iperf = IperfManager(self.rpc_client.root)
+        self.vmkping = VMKPingManager(self.rpc_client.root)
 
         self.scapy = ScapyManager(self.rpc_client.root)
         # Params / Configs

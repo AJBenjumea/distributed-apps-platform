@@ -27,6 +27,7 @@ from lydian.apps.tcpdump import TCPDump
 from lydian.apps.pentest.rapidscan import Rapidscan
 from lydian.apps.traffic_controller import TrafficControllerApp
 from lydian.apps.watch.threat import ThreatMonitor
+from lydian.apps.vmkping import VMKPing
 from lydian.utils import logger, common
 
 
@@ -63,7 +64,8 @@ class LydianService(LydianServiceBase):
         'results',
         'rules',
         'tcpdump',
-        'threatmonitor'
+        'threatmonitor',
+        'vmkping'
     ]
 
     def __init__(self):
@@ -93,6 +95,7 @@ class LydianService(LydianServiceBase):
         self.monitor = ResourceMonitor(self._resource_records)
         self.tcpdump = TCPDump()
         self.iperf = Iperf()
+        self.vmkping = VMKPing()
         self.results = Results()
         self.configs = config.get_configs()
 
