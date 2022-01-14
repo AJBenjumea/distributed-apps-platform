@@ -109,7 +109,7 @@ class NamespaceManager(object):
                 _ns = Namespace(ns_name, ns_id)
                 self._namespace_map[ns_name] = _ns
                 interfaces = _ns.interfaces
-                self._namespace_interface_map[ns_name] = interfaces or None
+                self._namespace_interface_map[ns_name] = interfaces
 
     def get_namespace_interface_map(self):
         return self._namespace_interface_map
