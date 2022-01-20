@@ -535,7 +535,7 @@ class Podium(BaseApp):
                 for host in hosts]
 
         results = ThreadPool(self.get_host_latency, args)
-        latencies = [latency for latency in results.values()]
+        latencies = list(results.values())
         return latencies
 
     def get_latency(self, reqid, method, duration=None, **kwargs):
@@ -677,6 +677,79 @@ def run_iperf(src, dst, duration=10, udp=False, bandwidth=None,
 run_iperf3 = run_iperf
 
 
+def run_netperf(src, dst, netperf_bin, netserver_bin, duration=10, udp=False,
+                message_size=None, client_args='', server_args='',
+                src_port=None, dst_port=None, func_ip=None):
+    """
+    Run netperf between <src> and <dst> over TCP/UDP for <duration> seconds
+
+    Returns netperf client output
+
+    Parameters
+    ----------
+    src: host
+        netperf client
+    dst: host
+        netperf server
+    duration: int
+        How long netperf should run
+    udp: bool
+        Whether to run in UDP mode or TCP (default: TCP)
+    message_size: int
+        Set message size in bytes
+    client_args: str
+        Additional cli options supported by netperf client
+    server_args: str
+        Additional cli options supported by netperf server
+    func_ip: func
+        function to resolve endpoint mgmt IP
+    src_port: int
+        netperf client port
+    dst_port: int
+        netperf server port
+    netperf_bin: str
+        netperf binary path
+    netserver_bin: str
+        netserver binary path
+    """
+
+    src_host = _get_host_ip(src, func_ip)
+    dst_host = _get_host_ip(dst, func_ip)
+    with LydianClient(dst_host) as server:
+        with LydianClient(src_host) as client:
+            port, job_id = None, None
+            try:
+                port = server.netperf.start_netperf_server(server_ip=dst,
+                                                           port=dst_port,
+                                                           args=server_args,
+                                                           netserver_bin=netserver_bin)
+                log.info('netperf server: %s is running on port %s', dst, port)
+                job_id = client.netperf.start_netperf_client(dst, port,
+                                                             src_ip=src,
+                                                             src_port=src_port,
+                                                             duration=duration,
+                                                             udp=udp,
+                                                             message_size=message_size,
+                                                             args=client_args,
+                                                             netperf_bin=netperf_bin)
+                job_info = client.netperf.get_client_job_info(job_id)
+                log.info('cmd: %s on netperf client running with job id: %d',
+                         job_info['cmd'], job_id)
+                time.sleep(duration)
+                while job_info['state'] == 'running':
+                    time.sleep(1)
+                    job_info = client.netperf.get_client_job_info(job_id)
+                    log.info('netperf client job: %d info %s', job_id, job_info)
+                return job_info['result']
+            finally:
+                if port:
+                    log.info('Killing netperf server: %s on port %s', dst, port)
+                    server.netperf.stop_netperf_server(port)
+                    if job_id:
+                        log.info('Killing netperf client, job_id: %d', job_id)
+                        client.netperf.stop_netperf_client(job_id)
+
+
 def start_pcap(host, pcap_file_name, interface, pcap_args='',
                func_ip=None, tool_path=None):
     """
@@ -734,4 +807,3 @@ def run_vmkping(src, dst_ip, src_vmk, netstack=None, duration=None,
     """
     with LydianClient(_get_host_ip(src, func_ip)) as client:
         return client.vmkping.run_vmkping(dst_ip, src_vmk, netstack, duration, args)
-

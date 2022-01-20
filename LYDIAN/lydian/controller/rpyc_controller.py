@@ -6,7 +6,6 @@
 
 
 import logging
-import os
 from queue import Queue
 
 import rpyc
@@ -16,6 +15,7 @@ from lydian.apps import config
 from lydian.apps.interface import InterfaceApp
 from lydian.apps.internal.hostinfo import HostInfo
 from lydian.apps.iperf import Iperf
+from lydian.apps.netperf import Netperf
 from lydian.apps.mocktraffic import MockTraffic
 from lydian.apps.monitor import ResourceMonitor
 from lydian.apps.namespace import NamespaceApp
@@ -65,7 +65,8 @@ class LydianService(LydianServiceBase):
         'rules',
         'tcpdump',
         'threatmonitor',
-        'vmkping'
+        'vmkping',
+        'netperf'
     ]
 
     def __init__(self):
@@ -95,6 +96,7 @@ class LydianService(LydianServiceBase):
         self.monitor = ResourceMonitor(self._resource_records)
         self.tcpdump = TCPDump()
         self.iperf = Iperf()
+        self.netperf = Netperf()
         self.vmkping = VMKPing()
         self.results = Results()
         self.configs = config.get_configs()

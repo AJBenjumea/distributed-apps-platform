@@ -194,6 +194,43 @@ class IperfManager(Manager):
         return self._client.iperf.is_running(port)
 
 
+class NetperfManager(Manager):
+
+    def start_netperf_server(self, netserver_bin, server_ip=None, port=None, args=''):
+        return self._client.netperf.start_netperf_server(server_ip=server_ip,
+                                                         port=port, args=args,
+                                                         netserver_bin=netserver_bin)
+
+    def stop_netperf_server(self, port):
+        self._client.netperf.stop_netperf_server(port)
+
+    def start_netperf_client(self, dst_ip, dst_port, netperf_bin, src_ip=None,
+                             src_port=None, duration=10, udp=False,
+                             message_size=None, args=''):
+        return self._client.netperf.start_netperf_client(dst_ip, dst_port,
+                                                         src_ip=src_ip,
+                                                         src_port=src_port,
+                                                         duration=duration, udp=udp,
+                                                         message_size=message_size,
+                                                         args=args,
+                                                         netperf_bin=netperf_bin)
+
+    def stop_netperf_client(self, job_id):
+        self._client.netperf.stop_netperf_client(job_id)
+
+    def get_server_ports(self):
+        return self._client.netperf.get_server_ports()
+
+    def get_client_jobs(self):
+        return self._client.netperf.get_client_jobs()
+
+    def get_client_job_info(self, job_id):
+        return self._client.netperf.get_client_job_info(job_id)
+
+    def is_running(self, port):
+        return self._client.netperf.is_running(port)
+
+
 class ScapyManager(Manager):
 
     def run(self, code):
@@ -413,6 +450,9 @@ class LydianClient(object):
         # IPerf Traffic
         self.iperf = IperfManager(self.rpc_client.root)
         self.vmkping = VMKPingManager(self.rpc_client.root)
+
+        # Netperf Traffic
+        self.netperf = NetperfManager(self.rpc_client.root)
 
         self.scapy = ScapyManager(self.rpc_client.root)
         # Params / Configs
