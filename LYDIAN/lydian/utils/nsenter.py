@@ -39,6 +39,7 @@ import os
 logger = logging.getLogger(__name__)
 LIBC = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
 VALID_NAMESPACES = frozenset(['ipc', 'mnt', 'net', 'pid', 'user', 'uts'])
+OPENED_FDS = {}
 
 
 def setns(fd):
@@ -50,12 +51,28 @@ def setns(fd):
 
 @contextlib.contextmanager
 def fdopen(path):
-    """Open a read-only fd to <path>"""
-    fd = os.open(path, os.O_RDONLY)
-    try:
+    """
+    Open a read-only fd to <path> if not present in OPENED_FDS.
+    If present, directly yields the file descriptor.
+    """
+    global OPENED_FDS
+    if path in OPENED_FDS:
+        fd = OPENED_FDS[path]
         yield fd
-    finally:
+    else:
+        fd = os.open(path, os.O_RDONLY)
+        OPENED_FDS[path] = fd
+        yield fd
+
+
+def fdcloseall():
+    """
+    Closes all the file descriptors opened and recorded in OPENED_FDS.
+    """
+    global OPENED_FDS
+    for fd in OPENED_FDS.values():
         os.close(fd)
+    OPENED_FDS = {}
 
 
 @contextlib.contextmanager
@@ -76,5 +93,6 @@ def namespace(nspath, nstype, verbose=False):
             if verbose:
                 logger.debug("Leaving %s namespace %s", nstype, nspath)
             setns(original_ns)
+
 
 Namespace = namespace

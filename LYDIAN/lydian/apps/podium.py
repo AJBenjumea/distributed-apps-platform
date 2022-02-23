@@ -401,6 +401,10 @@ class Podium(BaseApp):
             with LydianClient(hostip) as client:
                 client.controller.stop(rules)
 
+        def _close_traffic(hostip):
+            with LydianClient(hostip, request_timeout=None) as client:
+                client.controller.close()
+
         def _unregister_traffic(hostip, rules):
             with LydianClient(hostip) as client:
                 client.controller.unregister_traffic(rules)
@@ -423,12 +427,21 @@ class Podium(BaseApp):
             return ThreadPool(_stop_traffic, args)
         elif op_type == 'unregister':
             return ThreadPool(_unregister_traffic, args)
+        elif op_type == 'close':
+            cargs = [(host, (host,), {}) for host in host_rules.keys()]
+            return ThreadPool(_close_traffic, cargs)
 
     def start_traffic(self, reqid):
         return self._traffic_op(reqid, op_type='start')
 
     def stop_traffic(self, reqid, config=False):
         return self._traffic_op(reqid, op_type='stop')
+
+    def close_traffic(self, reqid):
+        """
+        Closes the traffic by closing every resource related to server and client.
+        """
+        return self._traffic_op(reqid, op_type='close')
 
     def unregister_traffic(self, reqid):
         """ Stop traffic, delete rules and result records"""

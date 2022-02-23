@@ -6,7 +6,6 @@
 
 import logging
 
-import lydian.traffic.core as core
 import lydian.traffic.task as task
 
 log = logging.getLogger(__name__)
@@ -53,6 +52,7 @@ class TrafficManager(object):
             self._traffic_tasks[key].stop()
 
     def close(self):
+        # TODO: Make it parallel, taking a lot of time.
         for _, task in self._traffic_tasks.items():
             task.close()
         self._traffic_tasks = {}

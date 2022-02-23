@@ -292,6 +292,9 @@ class TrafficControllerManager(Manager):
     def stop(self, rules, blocking=True):
         self._client.controller.stop(rules, blocking)
 
+    def close(self):
+        self._client.controller.close()
+
     def unregister_traffic(self, rules):
         self._client.controller.unregister_traffic(rules)
 
