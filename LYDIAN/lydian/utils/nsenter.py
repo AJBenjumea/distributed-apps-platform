@@ -35,6 +35,7 @@ import contextlib
 import ctypes.util
 import logging
 import os
+import errno
 
 logger = logging.getLogger(__name__)
 LIBC = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
