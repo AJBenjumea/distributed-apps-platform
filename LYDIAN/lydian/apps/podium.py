@@ -9,7 +9,7 @@ import itertools
 import logging
 import pickle
 import queue
-
+import random
 import time
 import uuid
 
@@ -52,6 +52,7 @@ class Podium(BaseApp):
     NAMESPACE_INTERFACE_NAME_PREFIXES = config.get_param('NAMESPACE_INTERFACE_NAME_PREFIXES')
     NODE_PREP_MAX_THREAD = config.get_param('NODE_PREP_MAX_THREAD')
     MAX_QUEUE_SIZE = 50000
+    DEFAULT_PORT_RANGE = [2000, 5000]
 
     def __init__(self, username=None, password=None, db_file=None):
         """
@@ -285,7 +286,8 @@ class Podium(BaseApp):
 
     def create_traffic_intent(self, src_ip, dst_ip, dst_port, protocol,
                               reqid=None, connected=True, **kwargs):
-
+        if not dst_port:
+            dst_port = random.randrange(*self.DEFAULT_PORT_RANGE)
         intent = {
             'reqid': reqid or '%s' % uuid.uuid4(),
             'ruleid': '%s' % uuid.uuid4(),

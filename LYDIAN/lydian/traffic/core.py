@@ -125,13 +125,13 @@ class TrafficRule(object):
 
     # Helper methods - Protocol(s)
     def is_TCP(self):
-        return self.protocol == 'TCP'
+        return self.protocol.upper() == 'TCP'
 
     def is_UDP(self):
-        return self.protocol == 'UDP'
+        return self.protocol.upper() == 'UDP'
 
     def is_HTTP(self):
-        return self.protocol == 'HTTP'
+        return self.protocol.upper() == 'HTTP'
 
     @property
     def enabled(self):
@@ -140,7 +140,8 @@ class TrafficRule(object):
     @property
     def external(self):
         """ returns true if to be handled by external tool """
-        return getattr(self, 'tool', self.INTERNAL) != self.INTERNAL
+        return getattr(self, 'tool', self.INTERNAL) != self.INTERNAL and \
+                self.tool not in ("", None)
 
     def as_dict(self):
         return {k: v for k, v in self.__dict__.items() if k in self.SCHEMA}
