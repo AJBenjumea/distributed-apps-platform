@@ -207,7 +207,7 @@ class Podium(BaseApp):
             self._ep_hosts[hostip] = hostip
 
         except Exception as err:
-            log.error("Error in adding endpoint %s - %r", hostip, err)
+            log.error("Error in adding endpoint %s - %r", hostip, err, exc_info=err)
 
     def add_host(self, hostip, username=None, password=None, fetch_iface=True):
         """
@@ -224,7 +224,7 @@ class Podium(BaseApp):
             self.nodes.add(hostip)
             return True
         except Exception as err:
-            log.error("Error in preparing host %s - %r", hostip, err)
+            log.error("Error in preparing host %s - %r", hostip, err, exc_info=err)
             return False
 
     def add_hosts(self, hostips, username=None, password=None,

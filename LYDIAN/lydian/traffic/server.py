@@ -78,7 +78,7 @@ class TCPServer(Server):
                     self.log.info(msg)
                 self._handler(conn)
         except Exception as err:
-            log.error("Error in starting (TCP) server : %r", err)
+            log.error("Error in starting (TCP) server : %r", err, exc_info=err)
         finally:
             self.close()
 
@@ -122,7 +122,7 @@ class UDPServer(Server):
                     self.log.info(msg)
                 self._handler(data, addr)
         except Exception as err:
-            log.error("Error in starting (UDP) server : %r", err)
+            log.error("Error in starting (UDP) server : %r", err, exc_info=err)
         finally:
             self.close()
 

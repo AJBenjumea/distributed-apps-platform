@@ -106,7 +106,7 @@ class NamespaceManager(object):
                     ns_id = re.findall('[0-9]+', ns[lindex:])[0]
                 except Exception as err:
                     log.error(
-                        "Cannot parse Namespace info for %s - %r", ns, err)
+                        "Cannot parse Namespace info for %s - %r", ns, err, exc_info=err)
                     continue
 
                 _ns = Namespace(ns_name, ns_id)

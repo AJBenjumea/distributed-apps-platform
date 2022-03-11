@@ -470,7 +470,7 @@ class LydianClient(object):
         try:
             self.rpc_client.close()
         except Exception as err:
-            log.error("Error in closing RPC Client connection : %r", err)
+            log.error("Error in closing RPC Client connection : %r", err, exc_info=err)
 
     def connect(self):
         if self.connected:
@@ -479,7 +479,7 @@ class LydianClient(object):
             self._connect()
             self._link_apps()
         except Exception as err:
-            log.error("RPC Connection error at %s : %r", self._host, err)
+            log.error("RPC Connection error at %s : %r", self._host, err, exc_info=err)
             raise err
 
     @property

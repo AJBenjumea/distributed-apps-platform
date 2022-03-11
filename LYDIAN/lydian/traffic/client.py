@@ -191,7 +191,7 @@ class TCPClient(Client):
             self._handler(payload, data, latency, error)
         except Exception as err:
             if self.verbose:
-                log.info('Ping Error - %r', err)
+                log.info('Ping Error - %r', err, exc_info=err)
 
 
 class UDPClient(Client):
@@ -243,7 +243,7 @@ class UDPClient(Client):
             self._handler(payload, data, latency, error)
         except Exception as err:
             if self.verbose:
-                log.info('Ping Error - %r', err)
+                log.info('Ping Error - %r', err, exc_info=err)
 
 
 class HTTPClient(TCPClient):
@@ -269,4 +269,4 @@ class HTTPClient(TCPClient):
             self._handler(payload, data, latency, error)
         except Exception as err:
             if self.verbose:
-                log.info('Ping Error - %r', err)
+                log.info('Ping Error - %r', err, exc_info=err)

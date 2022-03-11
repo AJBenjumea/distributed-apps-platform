@@ -209,7 +209,7 @@ class UbuntuNodePrep(NodePrep):
                 host.req_call('sudo systemctl daemon-reload')
                 host.req_call('systemctl start lydian')
             except Exception as err:
-                log.error("Error in starting service at %s : %r", self.hostip, err)
+                log.error("Error in starting service at %s : %r", self.hostip, err, exc_info=err)
                 return False
         return True
 
@@ -269,7 +269,7 @@ class ESXNodePrep(NodePrep):
             service_num = '%s' % (max(service_nums) + 1)
         except Exception as err:
             log.error("Error in determining ESX service number for host"
-                      " %s - Error: %r", self.hostip, err)
+                      " %s - Error: %r", self.hostip, err, exc_info=err)
             return
 
         host.req_call('cp /etc/vmware/firewall/service.xml %s' % self.FIREWALL_XML_BAK)
@@ -336,13 +336,13 @@ class ESXNodePrep(NodePrep):
             try:
                 self.config_firewall(host)
             except Exception as err:
-                log.debug("Could not configure firewall. Error: %s", err)
+                log.debug("Could not configure firewall. Error: %s", err, exc_info=err)
 
             # Start Lydian Service.
             try:
                 host.req_call(self.START_SERVICE, timeout=4)
             except Exception as err:
-                log.debug("Error in starting service at %s : %r", self.hostip, err)
+                log.debug("Error in starting service at %s : %r", self.hostip, err, exc_info=err)
                 return False
 
         return True
@@ -375,7 +375,7 @@ class ESXNodePrep(NodePrep):
                 return host.req_call(cmnd)
         except Exception as err:
             log.error("Error in running command %s at %s", cmnd, self.hostip)
-            log.error("%r", err)
+            log.error("%r", err, exc_info=err)
 
 
 class WinNodePrep(NodePrep):

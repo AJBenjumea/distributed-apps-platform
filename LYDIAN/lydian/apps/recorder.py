@@ -149,7 +149,7 @@ class RecordManager(Subscribe, BaseApp):
             except queue.Empty:
                 pass
             except Exception as err:
-                log.error("Error in handling Traffic records : %r", err)
+                log.error("Error in handling Traffic records : %r", err, exc_info=err)
 
     def _resource_record_handler(self):
         while not self._stopped.is_set():
@@ -162,7 +162,7 @@ class RecordManager(Subscribe, BaseApp):
             except queue.Empty:
                 pass
             except Exception as err:
-                log.error("Error in handling Resource records %r", err)
+                log.error("Error in handling Resource records %r", err, exc_info=err)
 
     def start(self, blocking=False):
         self._stopped.clear()
