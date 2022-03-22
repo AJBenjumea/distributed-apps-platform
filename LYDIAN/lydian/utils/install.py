@@ -132,7 +132,7 @@ def install_egg():
         os.system('cp %s %s' % (temp_egg_file.name, egg_file))
         logging.info("Generated local egg at %s", egg_file)
     except Exception as err:
-        logging.info("Error in zipping directory :%r", err)
+        logging.info("Error in zipping directory :%r", err, exc_info=err)
     finally:
         # release lock file
         if os.path.exists(lock_file):

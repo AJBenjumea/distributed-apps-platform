@@ -30,7 +30,7 @@ def _get_es_sender():
         assert host and port, "No host and port specified for ElasticSearch"
         return Elasticsearch(host=host, port=port)
     except Exception as err:
-        log.error('Error in creating Elastic Search client %r', err)
+        log.error('Error in creating Elastic Search client %r', err, exc_info=err)
         return None
 
 
@@ -67,7 +67,7 @@ class ElasticSearchTrafficRecorder(ElasticSearchRecorder):
             self._client.index(
                 index=self._index, id=str(uuid.uuid4()), body=body)
         except Exception as e:
-            log.error("Failed to send data to elasticsearch due to %s" % e)
+            log.error("Failed to send data to elasticsearch due to %s" % e, exc_info=err)
 
     def write(self, traffic_record):
         if not self.enabled:

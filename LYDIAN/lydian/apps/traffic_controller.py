@@ -14,17 +14,18 @@ import logging
 from lydian.apps.base import BaseApp, exposify
 
 import lydian.traffic.core as core
-import lydian.traffic.task as task
 
 from lydian.utils.network_utils import get_ns_manager, get_interface_manager, \
-        NAMESPACE_INTERFACE_NAME_PREFIXES
+    NAMESPACE_INTERFACE_NAME_PREFIXES
 
 from lydian.traffic.manager import ClientManager, ServerManager
 from lydian.utils import parallel
 from lydian.utils.common import get_mgmt_ifname, get_host_name
+from lydian.utils.nsenter import fdcloseall
 
 
 log = logging.getLogger(__name__)
+
 
 @exposify
 class TrafficControllerApp(BaseApp):
@@ -242,3 +243,4 @@ class TrafficControllerApp(BaseApp):
     def close(self):
         self._client_mgr.close()
         self._server_mgr.close()
+        fdcloseall()  # Closes all the namespace related file descriptors

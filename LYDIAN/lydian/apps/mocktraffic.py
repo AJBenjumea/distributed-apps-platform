@@ -83,7 +83,7 @@ class MockTraffic(BaseApp):
                     log.error("Cann't put Traffic Record %r into the queue: %r",
                             rec, err)
                 except Exception as err:
-                    log.error("Error in puytting dummy records %r ",err)
+                    log.error("Error in puytting dummy records %r ", err, exc_info=err)
 
             time.sleep(self._interval)
 

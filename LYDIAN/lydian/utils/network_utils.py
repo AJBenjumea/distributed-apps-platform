@@ -25,7 +25,8 @@ from lydian.apps import config
 
 INTERFACE_FAMILY = (2, 10)
 
-NAMESPACE_INTERFACE_NAME_PREFIXES = config.get_param('NAMESPACE_INTERFACE_NAME_PREFIXES')
+NAMESPACE_INTERFACE_NAME_PREFIXES = config.get_param(
+    'NAMESPACE_INTERFACE_NAME_PREFIXES')
 
 log = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class Namespace(object):
     """
     Namespace object which holds information name, id, interfaces inside
     """
+
     def __init__(self, name, id=None):
         self._name = name
         self._id = id
@@ -59,8 +61,8 @@ class Namespace(object):
 
     def as_dict(self):
         return dict(list(zip(['name', 'id', 'interfaces'],
-                        [self.name, self.id, [interface.as_dict() for
-                                              interface in self.interfaces]])))
+                             [self.name, self.id, [interface.as_dict() for
+                                                   interface in self.interfaces]])))
 
     def discover_interfaces(self):
         ns_path = '/var/run/netns/%s' % self.name
@@ -103,13 +105,14 @@ class NamespaceManager(object):
                     ns_name = ns[:lindex]
                     ns_id = re.findall('[0-9]+', ns[lindex:])[0]
                 except Exception as err:
-                    log.error("Cannot parse Namespace info for %s - %r", ns, err)
+                    log.error(
+                        "Cannot parse Namespace info for %s - %r", ns, err, exc_info=err)
                     continue
 
                 _ns = Namespace(ns_name, ns_id)
                 self._namespace_map[ns_name] = _ns
                 interfaces = _ns.interfaces
-                self._namespace_interface_map[ns_name] = interfaces or None
+                self._namespace_interface_map[ns_name] = interfaces
 
     def get_namespace_interface_map(self):
         return self._namespace_interface_map
@@ -153,6 +156,7 @@ class Interface(object):
     """
     Interface object which holds all the information related to interface
     """
+
     def __init__(self, name, address, family, netmask, broadcast):
         self._name = name
         self._address = address
@@ -182,7 +186,7 @@ class Interface(object):
 
     def as_dict(self):
         return dict(list(zip(['name', 'address', 'family', 'netmask', 'broadcast'],
-                        [self.name, self.address, self.family, self.netmask,
+                             [self.name, self.address, self.family, self.netmask,
                          self.broadcast])))
 
 
@@ -190,6 +194,7 @@ class InterfaceManager(object):
     """
     Class that controls all Interface information on host
     """
+
     def __init__(self):
         self.discover_interfaces()
 
@@ -243,7 +248,10 @@ class InterfaceManager(object):
         if interface not in self._interface_map:
             return ips
         for sub_interface in self._interface_map.get(interface):
-            ips.append(sub_interface.address)
+            if "%" in sub_interface.address:
+                ips.append(sub_interface.address.split("%")[0])
+            else:
+                ips.append(sub_interface.address)
         return ips
 
     def get_all_ips(self):
@@ -253,8 +261,10 @@ class InterfaceManager(object):
             all_ips.extend(self.get_ips_by_interface(interface))
         return all_ips
 
+
 iface_mgr = None
 ns_mgr = None
+
 
 def get_interface_manager():
     global iface_mgr
@@ -262,8 +272,43 @@ def get_interface_manager():
         iface_mgr = InterfaceManager()
     return iface_mgr
 
+
 def get_ns_manager():
     global ns_mgr
     if not ns_mgr:
         ns_mgr = NamespaceManager()
     return ns_mgr
+
+
+def get_vmkping_stats(ping_output):
+    """
+    Returns the stats for the vmkping operation.
+
+    Parameters:
+    ----------
+        ping_output: str
+            Successful output for the ping operation.
+    Returns:
+        stats: dict
+            {'success': x, 'failure': y, 'pass_percent': z}
+    """
+
+    stats_matcher = re.compile(
+        r'(\d+) packets transmitted, (\d+) (?:packets )?received, (\d+\.?\d*)% packet loss')
+
+    def _get_match_groups(ping_output, regex):
+        """
+        Get groups by matching regex in output from ping command.
+        """
+        match = regex.search(ping_output)
+        if not match:
+            log.error('Invalid PING output:\n' + ping_output)
+            return (0, 0, 0)
+        return match.groups()
+
+    sent, received, packet_loss = _get_match_groups(ping_output, stats_matcher)
+    stats = dict()
+    stats['success'] = int(received)
+    stats['failure'] = int(sent) - int(received)
+    stats['pass_percent'] = 100 - int(packet_loss)
+    return stats

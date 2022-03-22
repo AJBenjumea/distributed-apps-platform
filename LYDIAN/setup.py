@@ -17,7 +17,7 @@ deps = [x.strip() for x in deps]
 deps = [x for x in deps if x and not x.startswith('#')]
 
 setuptools.setup(
-    name="lydian",
+    name="vmware-lydian",
     version=version['__version__'],
     author="Vipin Sharma, Pradeep Singh, Spiro Kourtessis, Gavin Chang, Mahima Kothari, Kaustabh Duorah",
     author_email="sharmavipin@vmware.com",

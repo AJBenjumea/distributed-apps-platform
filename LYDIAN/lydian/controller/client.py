@@ -156,6 +156,12 @@ class TCPDumpManager(Manager):
         return self._client.tcpdump.is_running(dst_file)
 
 
+class VMKPingManager(Manager):
+
+    def run_vmkping(self, dst_ip, src_vmk, netstack="vxlan", duration=10, args=''):
+        return self._client.vmkping.run_vmkping(dst_ip, src_vmk, netstack, duration, args)
+
+
 class IperfManager(Manager):
 
     def start_iperf_server(self, port=None, args='', iperf_bin='iperf3'):
@@ -186,6 +192,43 @@ class IperfManager(Manager):
 
     def is_running(self, port):
         return self._client.iperf.is_running(port)
+
+
+class NetperfManager(Manager):
+
+    def start_netperf_server(self, netserver_bin, server_ip=None, port=None, args=''):
+        return self._client.netperf.start_netperf_server(server_ip=server_ip,
+                                                         port=port, args=args,
+                                                         netserver_bin=netserver_bin)
+
+    def stop_netperf_server(self, port):
+        self._client.netperf.stop_netperf_server(port)
+
+    def start_netperf_client(self, dst_ip, dst_port, netperf_bin, src_ip=None,
+                             src_port=None, duration=10, udp=False,
+                             message_size=None, args=''):
+        return self._client.netperf.start_netperf_client(dst_ip, dst_port,
+                                                         src_ip=src_ip,
+                                                         src_port=src_port,
+                                                         duration=duration, udp=udp,
+                                                         message_size=message_size,
+                                                         args=args,
+                                                         netperf_bin=netperf_bin)
+
+    def stop_netperf_client(self, job_id):
+        self._client.netperf.stop_netperf_client(job_id)
+
+    def get_server_ports(self):
+        return self._client.netperf.get_server_ports()
+
+    def get_client_jobs(self):
+        return self._client.netperf.get_client_jobs()
+
+    def get_client_job_info(self, job_id):
+        return self._client.netperf.get_client_job_info(job_id)
+
+    def is_running(self, port):
+        return self._client.netperf.is_running(port)
 
 
 class ScapyManager(Manager):
@@ -248,6 +291,9 @@ class TrafficControllerManager(Manager):
 
     def stop(self, rules, blocking=True):
         self._client.controller.stop(rules, blocking)
+
+    def close(self):
+        self._client.controller.close()
 
     def unregister_traffic(self, rules):
         self._client.controller.unregister_traffic(rules)
@@ -406,6 +452,10 @@ class LydianClient(object):
         self.pcap = TCPDumpManager(self.rpc_client.root)
         # IPerf Traffic
         self.iperf = IperfManager(self.rpc_client.root)
+        self.vmkping = VMKPingManager(self.rpc_client.root)
+
+        # Netperf Traffic
+        self.netperf = NetperfManager(self.rpc_client.root)
 
         self.scapy = ScapyManager(self.rpc_client.root)
         # Params / Configs
@@ -420,7 +470,7 @@ class LydianClient(object):
         try:
             self.rpc_client.close()
         except Exception as err:
-            log.error("Error in closing RPC Client connection : %r", err)
+            log.error("Error in closing RPC Client connection : %r", err, exc_info=err)
 
     def connect(self):
         if self.connected:
@@ -429,7 +479,7 @@ class LydianClient(object):
             self._connect()
             self._link_apps()
         except Exception as err:
-            log.error("RPC Connection error at %s : %r", self._host, err)
+            log.error("RPC Connection error at %s : %r", self._host, err, exc_info=err)
             raise err
 
     @property
